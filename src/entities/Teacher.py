@@ -3,11 +3,12 @@ from pathfinding.finder.a_star import AStarFinder
 from pathfinding.core.grid import Grid
 
 class Teacher:
-    def __init__(self, x, y, speed, health, image):
+    def __init__(self, x, y, speed, fearLevel, image, student1, student2):
         self.x = x
         self.y = y
         self.speed = speed
-        self.health = health
+        self.fearLevel = fearLevel
+        self.students = [student1,student2]
         self.inventory = []
         self.image = pygame.image.load(image)
         self.rect = self.image.get_rect()
@@ -31,11 +32,15 @@ class Teacher:
         grid = Grid(matrix=grid_data)
         start = grid.node(start[0], start[1])
         end = grid.node(end[0], end[1])
-
         finder = AStarFinder()
         path, _ = finder.find_path(start, end, grid)
-
         return path
 
     def draw(self, screen):
         screen.blit(self.image, self.rect.topleft)
+
+    def scarePlayer(self, fearIncrease):
+        self.fearLevel += fearIncrease
+        if(self.fearLevel >= 100):
+            for student in self.students:
+                student.panic()
