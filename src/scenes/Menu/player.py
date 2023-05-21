@@ -7,6 +7,7 @@ from Level1Settings import *
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
+        self.life =100
         self.image = pygame.image.load('player.png')  # Adicione a imagem do seu jogador
         self.rect = self.image.get_rect(center=pos)
         self.speed = 100  # velocidade de movimento em milissegundos
@@ -29,3 +30,6 @@ class Player(pygame.sprite.Sprite):
 
         if path:
             self.path = path[1:]
+
+    def take_damage(self, damage):
+        self.life   =- damage

@@ -1,86 +1,54 @@
-import pygame
-import time
-from pathfinding.finder.a_star import AStarFinder
 from pathfinding.core.grid import Grid
+from pathfinding.finder.a_star import AStarFinder
+import pygame
 
-class ghost:
-    def __init__(self, x, y, speed, damage, image, patrol_distance, patrol_direction, player):
-            self.x = x
-            self.y = y
-            self.speed = speed
-            self.damage = damage
-            self.image = pygame.image.load(image)
-            self.rect = self.image.get_rect()
-            self.rect.topleft = (self.x, self.y)
-            self.patrol_distance = patrol_distance
-            self.patrol_direction = patrol_direction
-            self.patrol_position = 0
-            self.patrol_reversed = False
-            self.chase_start_time = 0
-            self.chase_duration = 20
-            self.player = player
+class Ghost(pygame.sprite.Sprite):
+    def __init__(self, pos, sprite, speed, grid, tileSize, player):
+        super().__init__()
+        self.player = player
+        self.image = pygame.image.load(sprite)
+        self.rect = self.image.get_rect(center=pos)
+        self.start_pos = pos
+        self.speed = speed
+        self.path = []
+        self.grid = grid
+        self.tileSize = tileSize
+        self.patrol_points = self.get_patrol_points()
+        self.last_update = pygame.time.get_ticks()
 
-    def move(self, dx, dy):
-        self.x += dx * self.speed
-        self.y += dy * self.speed
-        self.rect.topleft = (self.x, self.y)
+    def get_patrol_points(self):
+        patrol_points = []
+        print(self.grid)
+        for row_index, row in enumerate(self.grid):
+            for col_index, col in enumerate(row):
+                if col == 'ep':
+                    patrol_points.append((col_index, row_index))
+        print(patrol_points)
+        return patrol_points
 
+    def update(self):
+        now = pygame.time.get_ticks()
+        if not self.path or now - self.last_update > self.speed * 1000:
+            self.path = self.calculate_path()
+            self.last_update = now
+        if self.path and now - self.last_update > self.speed * 10:
+            next_pos = self.path[0]
+            self.rect.topleft = (next_pos[0] * self.tileSize, next_pos[1] * self.tileSize)
+            self.path = self.path[1:]
+            self.last_update = now
 
-    def patrol(self):
-        if self.patrol_position == self.patrol_distance:
-            self.patrol_reversed = not self.patrol_reversed
-            self.patrol_position = 0
-
-        if self.patrol_direction == 'vertical':
-            dy = -1 if self.patrol_reversed else 1
-            self.move(0, dy)
-        else: # horizontal
-            dx = -1 if self.patrol_reversed else 1
-            self.move(dx, 0)
-
-        self.patrol_position += 1
-
-    def in_sight(self, sight_range):
-        distance = ((self.x - self.player.x) ** 2 + (self.y - self.player.y) ** 2) ** 0.5
-        return distance <= sight_range
-
-    def pathfinding(self, start, end, grid_data):
+    def calculate_path(self):
+        grid_data = [[1 if cell == 'x' else 0 for cell in row] for row in self.grid]
         grid = Grid(matrix=grid_data)
-        start = grid.node(start[0], start[1])
-        end = grid.node(end[0], end[1])
-
-        finder = AStarFinder()
-        path, _ = finder.find_path(start, end, grid)
-
+        path = []
+        start = grid.node(self.rect.x // self.tileSize, self.rect.y // self.tileSize)
+        for patrol_point in self.patrol_points:
+            end = grid.node(patrol_point[0], patrol_point[1])
+            finder = AStarFinder()
+            patrol_path, _ = finder.find_path(start, end, grid)
+            path.extend(patrol_path[1:])  # Exclude the starting point for all paths except the first
+            start = end
         return path
 
-    def chase(self, grid_data):
-        path = self.pathfinding((self.x, self.y), (self.player.x, self.player.y), grid_data)
-        if len(path) > 1:
-            next_node = path[1]
-            dx = next_node[0] - self.x
-            dy = next_node[1] - self.y
-            self.move(dx, dy)
-
-    def collide_with_player(self, player):
-        return self.rect.colliderect(player.rect)
-
-    def update(self, player, grid_data, sight_range):
-        if self.in_sight(sight_range):
-            if self.chase_start_time == 0:
-                self.chase_start_time = time.time()
-
-            self.chase(grid_data)
-
-            if self.collide_with_player(player):
-                player.scarePlayer()
-            if time.time() - self.chase_start_time > self.chase_duration:
-                self.chase_start_time = 0
-        else:
-            if self.chase_start_time != 0:
-                self.chase_start_time = 0
-
-            self.patrol()
-
-    def draw(self, screen):
-        screen.blit(self.image, self.rect.topleft)
+    def reset_position(self):
+        self.rect.topleft = self.start_pos
