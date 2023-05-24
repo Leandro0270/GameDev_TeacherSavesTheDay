@@ -38,7 +38,10 @@ class Level1:
         self.items_sprites.add(item)
         self.visible_sprites.add(item)
         self.ui = ui(self.display_surface)
-        self.hud = HUD(self.player, len(self.items_sprites), "Chegue ao final da fase", self.display_surface)
+        self.hud = HUD(self.player, len(self.items_sprites), "Chegue ao final da fase", self.display_surface) 
+        
+        #objetivo nivel 2 = Sobreviva até o final e nível 3 = Evacue o prédio
+        
         self.currentGhostPatrolIndex = 0
 
 
